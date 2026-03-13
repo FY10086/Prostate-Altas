@@ -1,19 +1,26 @@
 #### ========== Part 4: Python - 加载 h5ad & 准备 Benchmark ========== ####
 ## 【Python 内核 (scib-env)】
 
+import os
+
+# 避免 OpenBLAS/OMP 在线程嵌套并行时触发线程上限和内存区域分配错误
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 import numpy as np
 import pandas as pd
 import scanpy as sc
 import scipy.sparse as sp
-import os
 from sklearn.neighbors import NearestNeighbors
 from scib_metrics.nearest_neighbors import NeighborsResults
 from scib_metrics.benchmark import Benchmarker, BioConservation, BatchCorrection
 
 ## 参数配置
 input_dir    = "/home/data/tanglei/project/prostate_altas/output/02"
-h5ad_path    = os.path.join(input_dir, "benchmark_GSE.h5ad")
-batch_key    = "GSE.ID"
+h5ad_path    = os.path.join(input_dir, "benchmark_GSM.h5ad")
+batch_key    = "sample.ID"
 celltype_key = "celltype"
 
 ## 加载 h5ad
@@ -59,7 +66,7 @@ def sklearn_nn(X: np.ndarray, k: int) -> NeighborsResults:
         n_neighbors=k,
         algorithm="brute",
         metric="euclidean",
-        n_jobs=-1
+        n_jobs=1
     ).fit(X)
     distances, indices = nbrs.kneighbors(X)
     return NeighborsResults(indices=indices, distances=distances)
@@ -74,7 +81,7 @@ print(f"Batch key:  {batch_key}")
 print(f"Label key:  {celltype_key}")
 
 ## Benchmarker 缓存文件（保存到 input_dir 下，可在 tmux 先跑再回 notebook 复用）
-bm_cache_path = Path(input_dir) / "bm_scib_metrics.pkl"
+bm_cache_path = Path(input_dir) / "bm_scib_metrics_GSM.pkl"
 bm_cache_path.parent.mkdir(parents=True, exist_ok=True)
 
 if bm_cache_path.exists():
